@@ -40,11 +40,14 @@ unsigned long last_publish_time = 0;
 uint8_t poll_index_low = 0;
 uint8_t poll_index_high = 0;
 uint8_t device = 0;
+bool setup_complete = false;
 char esp_serial[16];
 char ip[24];
 
 /* Locals */
 bool mqtt_connect(Adafruit_MQTT_Publish* pub);
+void pub_onconnect_msges(Adafruit_MQTT_Client* mqtt);
+void pub_contact_0(Adafruit_MQTT_Client* mqtt, char* feed_key);
 void process_cmds(Adafruit_MQTT_Subscribe s);
 void refresh();
 
@@ -92,23 +95,35 @@ void setup() {
 
   /* BOARD SPECIFIED FEEDS. */
   #ifdef ENABLE_DHT
+  device |= 0x01;
   dht_init();
   add_pub_feed_key(HOME_BASE, "temperature_dht", 1);
   add_pub_feed_key(HOME_BASE, "humidity_dht", 2);
-
-  device |= 0x01;
   #endif
+
   #ifdef ENABLE_MCP9808
+  device |= 0x02;
   mcp_init();
   add_pub_feed_key(HOME_BASE, "temperature_mcp", 3);
-
-  device |= 0x02;
   #endif
+
+  #ifdef ENABLE_CONTACT
+  device |= 0x4;
+  pinMode(PIN_CONTACT_0, INPUT);
+  add_pub_feed_key(HOME_BASE, "contact_0", 4);
+  #endif
+
   #ifdef ENABLE_ANALOG
+  device |= 0x16;
   an_init();
   add_pub_feed_key(HOME_BASE, "analog", 5);
+  #endif
 
-  device |= 0x16;
+  #ifdef ENABLE_RELAY
+  device |= 0x128;
+  pinMode(PIN_RELAY_0, OUTPUT);
+  /* Commands for relay published via /feeds/serial#/cmds */
+  /* accepted commands: open, close, toggle */
   #endif
 
   /* Setup OTA. */
@@ -118,6 +133,8 @@ void setup() {
   /* Start MQTT connection. */
   mqtt.will(sub_dev_cmds.topic, MQTT_DISCONNECTED);
   mqtt_connect(&pub_dev_cmds);
+
+  setup_complete = true;
 
   DEBUG_MSGLN(F("setup complete"));
 
@@ -133,7 +150,9 @@ void loop() {
   ArduinoOTA.handle();
 
   /* Keep retrying if we failed to connect. */
-  mqtt_connect(&pub_dev_cmds);
+  if(mqtt_connect(&pub_dev_cmds) || setup_complete) {
+    pub_onconnect_msges(&mqtt);
+  }
 
   while ((subscription = mqtt.readSubscription(MQTT_SUB_READ_TIMEOUT))) {
     if ( subscription == &sub_dev_cmds ) {
@@ -141,6 +160,12 @@ void loop() {
     }
   }
 
+  /* event based publishers */
+  #ifdef ENABLE_CONTACT
+  pub_contact_0(&mqtt, get_pub_feed_key(4));
+  #endif
+
+  /* poll based publishers */
   if((long)(millis() - rolltime_high >= 0)) {
     rolltime_high += PUBLISH_RATE_HIGH;
 
@@ -212,10 +237,50 @@ void process_cmds(Adafruit_MQTT_Subscribe s) {
   if (strcmp((char *)s.lastread, "refresh") == 0) {
     refresh();
   }
+  #ifdef ENABLE_RELAY
+  if (strcmp((char *)s.lastread, "close") == 0) {
+    digitalWrite(PIN_RELAY_0, HIGH);
+  }
+  if (strcmp((char *)s.lastread, "open") == 0) {
+    digitalWrite(PIN_RELAY_0, LOW);
+  }
+  if (strcmp((char *)s.lastread, "toggle") == 0) {
+    digitalWrite(PIN_RELAY_0, HIGH);
+    delay(250);
+    digitalWrite(PIN_RELAY_0, LOW);
+  }
+  #endif
+
 }
 /* ----------------------------------------------------------------------- */
 void refresh() {
   /* Do all refresh data */
+}
+/* ----------------------------------------------------------------------- */
+void pub_onconnect_msges(Adafruit_MQTT_Client* mqtt) {
+  #ifdef ENABLE_CONTACT
+    pub_contact_0(mqtt, get_pub_feed_key(4));
+  #endif
+}
+/* ----------------------------------------------------------------------- */
+void pub_contact_0(Adafruit_MQTT_Client* mqtt, char* feed_key) {
+  #ifdef ENABLE_CONTACT
+    static uint8_t first_read = 0;
+    static uint8_t last_contact = 0;
+
+    if(last_contact != digitalRead(PIN_CONTACT_0) || first_read == 0) {
+      first_read = 1;
+      last_contact = digitalRead(PIN_CONTACT_0);
+      if(last_contact == 0) {
+        DEBUG_MSG("publish contact 0: "); DEBUG_MSGLN("0");
+        mqtt->publish(feed_key, "0");
+      }
+      else {
+        DEBUG_MSG("publish contact 0: "); DEBUG_MSGLN("1");
+        mqtt->publish(feed_key, "1");
+      }
+    }
+  #endif
 }
 /* ----------------------------------------------------------------------- */
 bool mqtt_connect(Adafruit_MQTT_Publish* pub) {
