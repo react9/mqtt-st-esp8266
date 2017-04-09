@@ -1,39 +1,24 @@
-/* BOARD configuration. */
+/* BOARD configuration. -- Customize via platformio.ini environments per board */
 /* --------------------------------------------*/
-//#define ENABLE_DHT        // 0x01 -D ENABLE_DHT
-//#define ENABLE_MCP9808    // 0x02 -D ENABLE_MCP9808
-//#define ENABLE_CONTACT    // 0x04 -D ENABLE_CONTACT
-//#define ENABLE_RELAY      // 0x08 -D ENABLE_RELAY
-//#define ENABLE_ANALOG     // 0x16 -D ENABLE_ANALOG
-/* --------------------------------------------*/
+//#define ENABLE_DHT
+//#define PIN_DHT D5
+//#define DHT_TYPE  DHT22
 
-/* DHT configuration. */
-/* --------------------------------------------*/
-#define PIN_DHT   D4       /* On the MCP board this is D5 */
-#define DHT_TYPE  DHT22
-/* --------------------------------------------*/
+//#define ENABLE_MCP9808
+//#define PIN_MCP9808_SDA D2 (NOT WORKING)
+//#define PIN_MCP9808_SCL D1 (NOT WORKING)
 
-/* MCP9808 configuration.*/
-/* --------------------------------------------*/
-/* Use to override defaults. (TBD this doesnt work) */
-// #define PIN_MCP9808_SDA D2
-// #define PIN_MCP9808_SCL D1
-/* --------------------------------------------*/
+//#define ENABLE_CONTACT
+//#define PIN_CONTACT_0 D2
 
-/* Contact configuration. */
-/* --------------------------------------------*/
-#define PIN_CONTACTS_TOTAL   1
-#define PIN_CONTACT_0       D2
-// #define PIN_CONTACT_1    D3
-// #define PIN_CONTACT_2    D4
-/* --------------------------------------------*/
+//#define ENABLE_RELAY
+//#define PIN_RELAY_0 D1
 
-/* Relay configuration. */
-/* --------------------------------------------*/
-#define PIN_REAY_TOTAL     1
-#define PIN_RELAY_0       D3
-// #define PIN_RELAY_1    D4
-// #define PIN_RELAY_2    D5
+//#define ENABLE_ANALOG
+
+//#define ENABLE_RGB
+//#define PIN_RGB D3
+//#define PIN_RGB_TOTAL_LEDS   32
 /* --------------------------------------------*/
 
 /* WiFi configuration. */
@@ -56,10 +41,7 @@
 /* SYSTEM configuration. */
 /* --------------------------------------------*/
 #define FIRMWARE_MAJOR_REV     0
-#define FIRMWARE_MINOR_REV     1
+#define FIRMWARE_MINOR_REV     2
 /* --------------------------------------------*/
-
-#define PUBLISH_RATE_LOW 60000
-#define PUBLISH_RATE_HIGH 5000
 
 /* END of user configuration. */

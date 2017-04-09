@@ -1,6 +1,8 @@
 #ifdef ENABLE_DHT
 #include "DHT.h"
-void dht_init();
-void pub_dht_humidity(Adafruit_MQTT_Client* mqtt, char* feed_key);
-void pub_dht_temperature(Adafruit_MQTT_Client* mqtt, char* feed_key);
+void dht_init(Adafruit_MQTT_Client* mqtt, const char* serial, const uint32_t p);
+void dht_exec(Adafruit_MQTT_Client* mqtt);
+void dht_refresh(Adafruit_MQTT_Client* mqtt);
+void dht_pub_humidity(Adafruit_MQTT_Client* mqtt);
+void dht_pub_temperature(Adafruit_MQTT_Client* mqtt);
 #endif
