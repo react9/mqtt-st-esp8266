@@ -58,7 +58,7 @@ char ip[24];
 /* Locals */
 bool mqtt_connect(Adafruit_MQTT_Publish* pub);
 void pub_onconnect_msges(Adafruit_MQTT_Client* mqtt);
-void process_cmds(Adafruit_MQTT_Subscribe s);
+bool process_cmds(Adafruit_MQTT_Subscribe s);
 void refresh(Adafruit_MQTT_Client* mqtt);
 
 /* Setup */
@@ -128,12 +128,12 @@ void setup() {
 
   #ifdef ENABLE_RELAY
   device |= 0x16;
-  relay_init(&mqtt, esp_serial);
+  relay_init(&mqtt, esp_serial, &sub_dev_cmds);
   #endif
 
   #ifdef ENABLE_RGB
   device |= 0x32;
-  rgb_init(&mqtt, esp_serial);
+  rgb_init(&mqtt, esp_serial, &sub_dev_cmds);
   #endif
 
   /* Setup OTA. */
@@ -141,7 +141,7 @@ void setup() {
   ArduinoOTA.begin();
 
   /* Start MQTT connection. */
-  mqtt.will(sub_dev_cmds.topic, MQTT_DISCONNECTED);
+  mqtt.will(default_pub_topic, MQTT_DISCONNECTED);
   mqtt_connect(&pub_dev_cmds);
 
   setup_complete = true;
@@ -166,15 +166,15 @@ void loop() {
 
   while ((subscription = mqtt.readSubscription(MQTT_SUB_READ_TIMEOUT))) {
     if ( subscription == &sub_dev_cmds ) {
-      process_cmds(sub_dev_cmds);
-    }
-    else {
-      #ifdef ENABLE_RGB
-      rgb_process_cnds(&mqtt, subscription);
-      #endif
-      #ifdef ENABLE_RELAY
-      relay_process_cnds(&mqtt, subscription);
-      #endif
+      if(!process_cmds(sub_dev_cmds)) {
+        #ifdef ENABLE_RGB
+        rgb_process_cmds(&mqtt, subscription);
+        #endif
+
+        #ifdef ENABLE_RELAY
+        relay_process_cmds(&mqtt, subscription);
+        #endif
+      }
     }
   }
 
@@ -206,16 +206,21 @@ void loop() {
 } /* loop */
 
 /* ----------------------------------------------------------------------- */
-void process_cmds(Adafruit_MQTT_Subscribe s) {
+bool process_cmds(Adafruit_MQTT_Subscribe s) {
+  bool result = false;
   DEBUG_MSG(F("received sub cmds: "));
   DEBUG_MSGLN((char *)s.lastread);
 
   if (strcmp((char *)s.lastread, "reset") == 0) {
+    result = true;
     while(1);
   }
   if (strcmp((char *)s.lastread, "refresh") == 0) {
+    result = true;
     refresh(&mqtt);
   }
+
+  return result;
 
 }
 /* ----------------------------------------------------------------------- */
